@@ -34,30 +34,34 @@ def buy_ticket(_sold_tickets: list, spacer: str = "") -> None:
     city_name = input(f"{spacer}Enter city name where you want to go: ")
     city_name = city_name.strip().capitalize()
     routes_by_city_name = get_available_routes_by(city_name, routes)
-    print(f"{spacer}We have following routes for you: ")
-    show_routes(routes_by_city_name, spacer=2 * spacer)
     routes_id_by_city_name = [route[0] for route in routes_by_city_name]
 
-    route_id = int(input(f"{spacer}Enter ID of the route you "
-                         f"are interested in: "))
-    if route_id in routes_id_by_city_name:
-        tickets_amount_to_buy = int(input(f"{spacer}Number of tickets "
-                                          f"you want to buy: "))
-        available_tickets = get_available_tickets_by(route_id, _sold_tickets)
+    if routes_id_by_city_name:
+        print(f"{spacer}We have following routes for you: ")
+        show_routes(routes_by_city_name, spacer=2 * spacer)
+        route_id = int(input(f"{spacer}Enter ID of the route you "
+                             f"are interested in: "))
+        if route_id in routes_id_by_city_name:
+            tickets_amount_to_buy = int(input(f"{spacer}Number of tickets "
+                                              f"you want to buy: "))
+            available_tickets = get_available_tickets_by(route_id,
+                                                         _sold_tickets)
 
-        if (len(available_tickets) - tickets_amount_to_buy) < 0:
-            print(f"{spacer}Sorry, but we don't have enough tickets for you "
-                  "or route with such ID doesn't exist")
+            if (len(available_tickets) - tickets_amount_to_buy) < 0:
+                print(f"{spacer}Sorry, but we don't have enough tickets for you"
+                      "or route with such ID doesn't exist")
+            else:
+                print(f"{spacer}Here are your tickets:")
+                for index in range(0, tickets_amount_to_buy):
+                    ticket = (route_id, available_tickets[index], str(uuid4()))
+                    _sold_tickets.append(ticket)
+                    print("{0}ID: {1}, Seat number: "
+                          "{2}, Control: {3}".format(2 * spacer, *ticket))
         else:
-            print(f"{spacer}Here are your tickets:")
-            for index in range(0, tickets_amount_to_buy):
-                ticket = (route_id, available_tickets[index], str(uuid4()))
-                _sold_tickets.append(ticket)
-                print("{0}ID: {1}, Seat number: "
-                      "{2}, Control: {3}".format(2 * spacer, *ticket))
+            print(f"{spacer}Wrong input there is no route with such ID and "
+                  f"destination city")
     else:
-        print(f"{spacer}Wrong input there is no route with such ID and "
-              f"destination city")
+        print(f"{spacer}Wrong input. There is no such city in available routes")
     print()
 
 

@@ -11,45 +11,45 @@ route_header = ("ID", "Date and Time", "Route", "Available tickets")
 
 sold_tickets = []
 routes = [
-    Route(0, datetime.strptime("2022-11-10, 08:00", "%Y-%m-%d, %H:%M"),
+    Route(0, datetime.strptime("2022-12-10, 08:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Odesa', 38),
-    Route(1, datetime.strptime("2022-11-10, 10:00", "%Y-%m-%d, %H:%M"),
+    Route(1, datetime.strptime("2022-12-10, 10:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Odesa', 40),
-    Route(2, datetime.strptime("2022-11-10, 12:00", "%Y-%m-%d, %H:%M"),
+    Route(2, datetime.strptime("2022-12-10, 12:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Odesa', 42),
     Route(3, datetime.strptime("2022-11-10, 14:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Odesa', 28),
     Route(4, datetime.strptime("2022-11-10, 16:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Kyiv', 41),
-    Route(5, datetime.strptime("2022-11-10, 18:00", "%Y-%m-%d, %H:%M"),
+    Route(5, datetime.strptime("2022-12-10, 18:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Kyiv", 40),
-    Route(6, datetime.strptime("2022-11-10, 20:00", "%Y-%m-%d, %H:%M"),
+    Route(6, datetime.strptime("2022-12-10, 20:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Kyiv", 38),
     Route(7, datetime.strptime("2022-11-10, 22:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Kyiv", 35),
-    Route(8, datetime.strptime("2022-11-10, 08:00", "%Y-%m-%d, %H:%M"),
+    Route(8, datetime.strptime("2022-12-10, 08:00", "%Y-%m-%d, %H:%M"),
           'Zhashkiv-Poltava', 40),
-    Route(9,  datetime.strptime("2022-11-10, 10:00", "%Y-%m-%d, %H:%M"),
+    Route(9,  datetime.strptime("2022-12-10, 10:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Poltava", 44),
     Route(10, datetime.strptime("2022-11-11, 12:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Poltava", 38),
-    Route(12, datetime.strptime("2022-11-12, 14:00", "%Y-%m-%d, %H:%M"),
+    Route(12, datetime.strptime("2022-12-12, 14:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Poltava", 45),
     Route(13, datetime.strptime("2022-11-12, 16:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Poltava", 37),
-    Route(14, datetime.strptime("2022-11-12, 06:00", "%Y-%m-%d, %H:%M"),
+    Route(14, datetime.strptime("2022-12-12, 06:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Lviv", 45),
     Route(15, datetime.strptime("2022-11-12, 10:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Lviv", 43),
-    Route(16, datetime.strptime("2022-11-12, 16:00", "%Y-%m-%d, %H:%M"),
+    Route(16, datetime.strptime("2022-12-12, 16:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Lviv", 51),
-    Route(17, datetime.strptime("2022-11-12, 20:00", "%Y-%m-%d, %H:%M"),
+    Route(17, datetime.strptime("2022-12-12, 20:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Lviv", 33),
     Route(18, datetime.strptime("2022-11-12, 8:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Uman", 25),
-    Route(19, datetime.strptime("2022-11-12, 10:00", "%Y-%m-%d, %H:%M"),
+    Route(19, datetime.strptime("2022-12-12, 10:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Uman", 35),
-    Route(20, datetime.strptime("2022-11-12, 12:00", "%Y-%m-%d, %H:%M"),
+    Route(20, datetime.strptime("2022-12-12, 12:00", "%Y-%m-%d, %H:%M"),
           "Zhashkiv-Uman", 28)
 ]
 
@@ -98,7 +98,7 @@ def buy_tickets_input(_routes: list, _sold_tickets: list,
     routes_without_sold_tickets = subtract_sold_tickets(routes_by_city_name,
                                                         _sold_tickets)
 
-    if not routes_by_city_name:
+    if not routes_without_sold_tickets:
         print("Sorry. It seems you entered wrong city name")
     else:
         show_table(routes_without_sold_tickets, _table_header)
@@ -108,9 +108,13 @@ def buy_tickets_input(_routes: list, _sold_tickets: list,
         if not route_by_id_and_city_name:
             print("Sorry. It seems you entered wrong route ID")
         else:
-            amount_to_buy = int(input("Amount of tickets you want to buy: "))
-            buy_tickets(route_by_id_and_city_name[-1], amount_to_buy,
-                        sold_tickets)
+            if datetime.now() < route_by_id_and_city_name[-1].datetime:
+                amount_to_buy = int(
+                    input("Amount of tickets you want to buy: "))
+                buy_tickets(route_by_id_and_city_name[-1], amount_to_buy,
+                            sold_tickets)
+            else:
+                print("Sorry, but this route has already left")
 
 
 def buy_random_input(_routes: list, _sold_tickets: list,

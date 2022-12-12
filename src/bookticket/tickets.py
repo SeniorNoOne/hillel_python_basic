@@ -42,7 +42,7 @@ def main(bus_station):
 
             case "4":
                 print("Showing bought tickets")
-                bus_station.show_table(header="ticket")
+                bus_station.show_table(table_type="ticket")
             case "5":
                 print("Random route for you")
                 bus_station.buy_random_input()

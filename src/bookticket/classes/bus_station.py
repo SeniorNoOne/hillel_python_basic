@@ -129,20 +129,20 @@ class BusStation(metaclass=SingletonMeta):
         print(f"Available seats: {string}")
 
     def show_table(self, table_to_show: list = (),
-                   header: str = "route") -> None:
-        if header == "route":
+                   table_type: str = "route") -> None:
+        if table_type == "route":
             table_to_show = table_to_show or self.routes
         else:
             table_to_show = table_to_show or self.tickets
-        header = self.headers[header]
-        table = tabulate(table_to_show, header, tablefmt="simple_outline")
+        table_type = self.headers[table_type]
+        table = tabulate(table_to_show, table_type, tablefmt="simple_outline")
         print(table)
 
     def buy_tickets(self, route: Route, seats_num_to_buy: list) -> None:
         sold_just_now_tickets = []
         for seat_num in seats_num_to_buy:
             sold_just_now_tickets.append(Ticket(route.id, seat_num))
-        self.show_table(sold_just_now_tickets, header="ticket")
+        self.show_table(sold_just_now_tickets, table_type="ticket")
         self.tickets.extend(sold_just_now_tickets)
         # callback function to update route's available seats
         self.update_route(route, sold_just_now_tickets)

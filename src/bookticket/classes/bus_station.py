@@ -75,58 +75,18 @@ class BusStation(metaclass=SingletonMeta):
     @staticmethod
     def update_route(route_to_update: Route, just_sold_tickets: list) -> None:
         sold_seats_num = [ticket.sold_seat_num for ticket in just_sold_tickets]
-        route_to_update.max_seats -= len(sold_seats_num)
-        available_seats = []
-        for seat_num in route_to_update.available_seats:
-            if seat_num not in sold_seats_num:
-                available_seats.append(seat_num)
-        route_to_update.available_seats = available_seats
+        route_to_update.update_route(sold_seats_num)
 
     @staticmethod
-    def find_cont_intervals(seq: list) -> list:
-        found_intervals = []
-        subseq_len = 1
-        subseq_start = seq[0]
-        if seq:
-            for index in range(1, len(seq)):
-                if seq[index] - seq[index - 1] != 1:
-                    found_intervals.append((subseq_start, subseq_len))
-                    subseq_len = 1
-                    subseq_start = seq[index]
-                else:
-                    subseq_len += 1
-            found_intervals.append((subseq_start, subseq_len))
-        return found_intervals
-
-    @staticmethod
-    def join_cont_intervals(intervals: list) -> str:
-        string = ""
-        for start, subseq_len in intervals:
-            if subseq_len == 1:
-                string += f"{start}, "
-            else:
-                string += f"{start}-{start + subseq_len - 1}, "
-        total_string = string.rstrip(", ")
-        return total_string if total_string else "No tickets left"
-
-    def find_seats_num_to_buy(self, amount_to_buy, route: Route) -> list:
-        intervals = self.find_cont_intervals(route.available_seats)
-        intervals = sorted(intervals, key=lambda interval: interval[-1])
-        seats_to_buy = []
-        for start, subseq_len in intervals:
-            # selling tickets from the best match (0 - exact match, bigger
-            # than 1 - selling from bigger range)
-            if subseq_len - amount_to_buy >= 0:
-                seats_to_buy.extend(list(range(start, start + subseq_len)))
-            if len(seats_to_buy) >= amount_to_buy:
+    def find_seats_num_to_buy(amount_to_buy, route: Route) -> list:
+        seat_ranges = sorted(route.seat_ranges,
+                             key=lambda subseq: abs(subseq[-1] - amount_to_buy))
+        seats_num_to_buy = []
+        for start, subseq_len in seat_ranges:
+            seats_num_to_buy.extend(list(range(start, start + subseq_len)))
+            if len(seats_num_to_buy) >= amount_to_buy:
                 break
-        seats_to_buy = seats_to_buy[0:amount_to_buy]
-        return seats_to_buy
-
-    def show_available_seats(self, route: Route) -> None:
-        intervals = self.find_cont_intervals(route.available_seats)
-        string = self.join_cont_intervals(intervals)
-        print(f"Available seats: {string}")
+        return seats_num_to_buy[:amount_to_buy]
 
     def show_table(self, table_to_show: list = (),
                    table_type: str = "route") -> None:
@@ -152,26 +112,26 @@ class BusStation(metaclass=SingletonMeta):
 
     def seats_num_input(self, route: Route) -> list:
         available_seats = route.available_seats
-        amount_to_buy = input("Amount of tickets you want to buy: ").split(",")
-        # using dict.fromkeys to remove duplicates and preserve order
-        amount_to_buy = [*dict.fromkeys(amount_to_buy)]
-        seats_to_buy = []
+        amount_to_buy = input("Number of tickets to buy: ").split(",")
+        seats_num_to_buy = []
 
         if len(amount_to_buy) == 1:
             amount_to_buy = int(amount_to_buy[-1])
-            if amount_to_buy <= len(route.available_seats):
-                seats_to_buy = self.find_seats_num_to_buy(amount_to_buy, route)
+            if amount_to_buy <= route.max_seats:
+                seats_num_to_buy = self.find_seats_num_to_buy(amount_to_buy,
+                                                              route)
         else:
             amount_to_buy = [int(seat_num) for seat_num in amount_to_buy if
                              seat_num.strip().isdecimal()]
+            # using dict.fromkeys to remove duplicates and preserve order
+            amount_to_buy = [*dict.fromkeys(amount_to_buy)]
             if all([seat_num in available_seats for seat_num in amount_to_buy]):
-                seats_to_buy.extend(amount_to_buy)
-        return seats_to_buy
+                seats_num_to_buy.extend(amount_to_buy)
+        return seats_num_to_buy
 
     def buy_tickets_input(self) -> None:
         if input("Show routes before buying (1 - yes)?: ") == "1":
-            self.show_table(self.routes)
-
+            self.show_table()
         city_name = input("Enter city name where you want to go: ")
         city_name = city_name.strip().capitalize()
         filtered_routes = self.filter_routes_by_city_name(city_name,
@@ -183,11 +143,13 @@ class BusStation(metaclass=SingletonMeta):
                                  f"interested in: "))
             route = self.filter_routes_by_id(route_id, filtered_routes)
             if route:
+                # filtering by city_name and id gives us a list with a single
+                # route, so we unpack it
                 route = route[-1]
                 if datetime.now() < route.date_time:
-                    self.show_available_seats(route)
-                    if seats_to_buy := self.seats_num_input(route):
-                        self.buy_tickets(route, seats_to_buy)
+                    route.show_available_seats()
+                    if seats_num_to_buy := self.seats_num_input(route):
+                        self.buy_tickets(route, seats_num_to_buy)
                     else:
                         print("Sorry, it seems you are trying to buy already "
                               "sold tickets or there are not enough tickets "
@@ -204,14 +166,14 @@ class BusStation(metaclass=SingletonMeta):
         current_date = datetime.now()
         filtered_routes = []
         for route in self.routes:
-            if current_date < route.date_time and route.max_seats:
+            if route.available_seats and current_date < route.date_time:
                 filtered_routes.append(route)
 
         if filtered_routes:
             rand_route = choice(filtered_routes)
-            self.show_available_seats(rand_route)
-            if seats_to_buy := self.seats_num_input(rand_route):
-                self.buy_tickets(rand_route, seats_to_buy)
+            rand_route.show_available_seats()
+            if seats_num_to_buy := self.seats_num_input(rand_route):
+                self.buy_tickets(rand_route, seats_num_to_buy)
             else:
                 print("Sorry, we don't have enough tickets for you")
         else:

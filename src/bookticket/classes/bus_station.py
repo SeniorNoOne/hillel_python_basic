@@ -1,8 +1,10 @@
+from src.bookticket.classes.custom_exeptions import TicketError
 from src.bookticket.classes.ticket import Ticket
 from src.bookticket.classes.route import Route
 from tabulate import tabulate
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import choice
+from copy import deepcopy
 
 
 class SingletonMeta(type):
@@ -25,6 +27,7 @@ class BusStation(metaclass=SingletonMeta):
         else:
             self.routes = []
         self.tickets = []
+        self.max_id = 0
 
     def __str__(self) -> str:
         routes_str = ""
@@ -38,15 +41,11 @@ class BusStation(metaclass=SingletonMeta):
             routes_str = routes_str + repr(route) + "\n"
         return routes_str
 
-    def validate_id(self, new_route):
-        return all([new_route.id != route.id for route in self.routes])
-
-    def append(self, route_params: tuple) -> None:
-        new_route = Route(*route_params)
-        if self.validate_id(new_route):
-            self.routes.append(new_route)
-        else:
-            print("New route ID must be unique")
+    def append(self, *route_params) -> None:
+        new_route = Route(self.max_id, *route_params)
+        self.routes.append(new_route)
+        self.max_id += 1
+        self.update_outdated_route(new_route)
 
     def filter_tickets_by_id(self, route_id: int) -> list:
         tickets_by_id = []
@@ -59,7 +58,7 @@ class BusStation(metaclass=SingletonMeta):
     def filter_routes_by_id(route_id: int, routes: list) -> list:
         available_routes_by_id = []
         for route in routes:
-            if route.available_seats and route.id == route_id:
+            if route.bus.available_seats and route.id == route_id:
                 available_routes_by_id.append(route)
         return available_routes_by_id
 
@@ -68,7 +67,7 @@ class BusStation(metaclass=SingletonMeta):
         available_routes_by_city_name = []
         for route in routes:
             destination_city = route.direction.split("-")[-1]
-            if route.available_seats and destination_city == city_name:
+            if route.bus.available_seats and destination_city == city_name:
                 available_routes_by_city_name.append(route)
         return available_routes_by_city_name
 
@@ -79,7 +78,7 @@ class BusStation(metaclass=SingletonMeta):
 
     @staticmethod
     def find_seats_num_to_buy(amount_to_buy, route: Route) -> list:
-        seat_ranges = sorted(route.seat_ranges,
+        seat_ranges = sorted(route.bus.seat_ranges,
                              key=lambda subseq: abs(subseq[-1] - amount_to_buy))
         seats_num_to_buy = []
         for start, subseq_len in seat_ranges:
@@ -98,6 +97,18 @@ class BusStation(metaclass=SingletonMeta):
         table = tabulate(table_to_show, table_type, tablefmt="simple_outline")
         print(table)
 
+    def update_outdated_route(self, route):
+        current_datetime = datetime.now()
+        if route.date_time < current_datetime:
+            new_date = current_datetime + timedelta(days=7)
+            new_date = new_date.replace(hour=route.date_time.hour,
+                                        minute=route.date_time.minute,
+                                        second=0, microsecond=0)
+            new_route = Route(self.max_id, new_date.strftime("%Y-%m-%d, %H:%M"),
+                              route.direction, deepcopy(route.bus))
+            self.routes.append(new_route)
+            self.max_id += 1
+
     def buy_tickets(self, route: Route, seats_num_to_buy: list) -> None:
         sold_just_now_tickets = []
         for seat_num in seats_num_to_buy:
@@ -111,13 +122,13 @@ class BusStation(metaclass=SingletonMeta):
         pass
 
     def seats_num_input(self, route: Route) -> list:
-        available_seats = route.available_seats
+        available_seats = route.bus.available_seats
         amount_to_buy = input("Number of tickets to buy: ").split(",")
         seats_num_to_buy = []
 
         if len(amount_to_buy) == 1:
             amount_to_buy = int(amount_to_buy[-1])
-            if amount_to_buy <= route.max_seats:
+            if amount_to_buy <= route.bus.max_seats:
                 seats_num_to_buy = self.find_seats_num_to_buy(amount_to_buy,
                                                               route)
         else:
@@ -151,22 +162,22 @@ class BusStation(metaclass=SingletonMeta):
                     if seats_num_to_buy := self.seats_num_input(route):
                         self.buy_tickets(route, seats_num_to_buy)
                     else:
-                        print("Sorry, it seems you are trying to buy already "
-                              "sold tickets or there are not enough tickets "
-                              "for you")
+                        raise TicketError("Sorry, it seems you are trying to "
+                                          "buy already sold tickets or there "
+                                          "are not enough tickets for you")
                 else:
-                    print("Sorry, but this route has already left")
+                    raise TicketError("Sorry, but this route has already left")
             else:
-                print("Sorry, it seems you entered wrong route ID")
+                raise TicketError("Sorry, it seems you entered wrong route ID")
         else:
-            print("Sorry, it seems you entered wrong city name")
+            raise TicketError("Sorry, it seems you entered wrong city name")
 
     def buy_random_input(self) -> None:
         # not taking into account routes that has no seats left or already left
         current_date = datetime.now()
         filtered_routes = []
         for route in self.routes:
-            if route.available_seats and current_date < route.date_time:
+            if route.bus.available_seats and current_date < route.date_time:
                 filtered_routes.append(route)
 
         if filtered_routes:
@@ -175,16 +186,17 @@ class BusStation(metaclass=SingletonMeta):
             if seats_num_to_buy := self.seats_num_input(rand_route):
                 self.buy_tickets(rand_route, seats_num_to_buy)
             else:
-                print("Sorry, we don't have enough tickets for you")
+                raise TicketError("Sorry, we don't have enough tickets for you")
         else:
-            print("Sorry, all the routes has left or all tickets are sold")
+            raise TicketError("Sorry, all the routes has left or all "
+                              "tickets are sold")
 
 
 if __name__ == "__main__":
     cassa = BusStation()
-    cassa.append((0, "2022-12-22, 08:00", "Kyiv-Odesa", 20))
-    cassa.append((1, "2022-12-22, 09:00", "Kyiv-Odesa", 20))
-    cassa.append((1, "2022-12-22, 10:00", "Kyiv-Odesa", 20))
+    cassa.append(("2022-12-22, 08:00", "Kyiv-Odesa", 20))
+    cassa.append(("2022-12-22, 09:00", "Kyiv-Odesa", 20))
+    cassa.append(("2022-12-22, 10:00", "Kyiv-Odesa", 20))
     print(cassa)
     print(id(cassa))
 

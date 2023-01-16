@@ -1,0 +1,2 @@
+class CSVHandlerError(Exception):
+    pass
